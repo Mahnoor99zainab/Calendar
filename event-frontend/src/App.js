@@ -2,7 +2,7 @@ import format from "date-fns/format";
 import getDay from "date-fns/getDay";
 import parse from "date-fns/parse";
 import startOfWeek from "date-fns/startOfWeek";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Calendar, dateFnsLocalizer } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import DatePicker from "react-datepicker";
@@ -20,57 +20,41 @@ const localizer = dateFnsLocalizer({
     locales,
 });
 
-const events = [
-    {
-        title: "Big Meeting",
-        allDay: true,
-        start: new Date(2021, 6, 0),
-        end: new Date(2021, 6, 0),
-    },
-    {
-        title: "Vacation",
-        start: new Date(2021, 6, 7),
-        end: new Date(2021, 6, 10),
-    },
-    {
-        title: "Conference",
-        start: new Date(2021, 6, 20),
-        end: new Date(2021, 6, 23),
-    },
-];
 
 function App() {
     const [newEvent, setNewEvent] = useState({ title: "", start: "", end: "" });
-    const [allEvents, setAllEvents] = useState(events);
-
-    function handleAddEvent() {
-        
-        for (let i=0; i<allEvents.length; i++){
-
-            const d1 = new Date (allEvents[i].start);
-            const d2 = new Date(newEvent.start);
-            const d3 = new Date(allEvents[i].end);
-            const d4 = new Date(newEvent.end);
-      /*
-          console.log(d1 <= d2);
-          console.log(d2 <= d3);
-          console.log(d1 <= d4);
-          console.log(d4 <= d3);
-            */
-
-             if (
-              ( (d1  <= d2) && (d2 <= d3) ) || ( (d1  <= d4) &&
-                (d4 <= d3) )
-              )
-            {   
-                alert("Confirm"); 
-                break;
-             }
-    
+    const [allEvents, setAllEvents] = useState([]);
+    const [state, setState] = useState(false);
+    useEffect(()=>{
+        getEvents();
+    }, [state]);
+    const getEvents = async () => {
+        try {
+            const res = await fetch("http://localhost:8080/api/events/");
+            const data = await res.json();            
+            setAllEvents(data);
+        } catch (e) {
+            console.log(e);
         }
-        
-        
-        setAllEvents([...allEvents, newEvent]);
+    }
+    const addEvent = async (obj) => {
+        try {
+            await fetch("http://localhost:8080/api/events/", {
+                method : "post",
+                body:JSON.stringify(obj),
+                headers : {
+                    'Content-Type' : 'application/json'
+                }
+            });
+            setState(!state);
+            alert("New event has been added");
+        } catch (e) {
+            console.log(e);
+            alert("Failed to add new event.");
+        }
+    }
+    function handleAddEvent() {
+        addEvent(newEvent);
     }
 
     return (
@@ -85,7 +69,15 @@ function App() {
                     Add Event
                 </button>
             </div>
-            <Calendar localizer={localizer} events={allEvents} startAccessor="start" endAccessor="end" style={{ height: 500, margin: "50px" }} />
+            <Calendar 
+                localizer={localizer} 
+                events={
+                    allEvents.data ? allEvents.data : []
+                } 
+                startAccessor="start"
+                endAccessor="end" 
+                style={{ height: 500, margin: "50px" }}
+            />
         </div>
     );
 }
